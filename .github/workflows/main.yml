@@ -1,0 +1,38 @@
+name: Build iOS IPA
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+      - name: Install deps
+        run: brew install xcodegen binaryen p7zip
+      - name: Install Rust 1.98.1 + iOS target
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup default 1.98.1
+          rustup target add aarch64-apple-ios --toolchain 1.98.1
+      - name: Download game files
+        run: |
+          GAME_ZIP_URL="https://abra--5e4bd525.oleg.api.cosmic-crab.buzz/57a4193cc3d3f069ce436fcda040ed4c705b76c7/GTA5Webport.zip?api-key=8acbcf1e-732c-4574-a3bf-27e6a85b86f1&download=true&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTE3ODk5NjksInJhdGUiOiI1ME0iLCJyb2xlIjoic2lsdmVyIiwic2Vzc2lvbklEIjoiNGM1MzJhZTRkNjdjMmRkMTI2NjJlYWQ5NTc4Yzc4Nzg2ZmIyNjZkYSIsImRvbWFpbiI6IndlYnRvci5pbyIsImFnZW50IjoiTW96aWxsYS81LjAgKGlQaG9uZTsgQ1BVIGlQaG9uZSBPUyAxOF83IGxpa2UgTWFjIE9TIFgpIEFwcGxlV2ViS2l0LzYwNS4xLjE1IChLSFRNTCwgbGlrZSBHZWNrbykgVmVyc2lvbi8yNi41LjIgTW9iaWxlLzE1RTE0OCBTYWZhcmkvNjA0LjEiLCJyZW1vdGVBZGRyZXNzIjoiMjYwMDoxMDEwOmIxMGU6MjY3NDozMWQyOmQ4MGI6NDM4ZDphMTUxIn0.CArvdtZxUVWyL2TVESlVSRPgereAjscICj2MS-bSIGQ"
+          echo "downloading game files…"
+          curl -L --fail -o game.zip "$GAME_ZIP_URL"
+          ls -lh game.zip
+      - name: Build IPA
+        env:
+          BUNDLE_ID: com.pentaaaa.muguet
+        run: |
+          if [ -f game.zip ]; then
+            ./make-ios.sh game.zip --ipa
+          else
+            ./make-ios.sh --ipa
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Muguet-ipa
+          path: build/Muguet.ipa
